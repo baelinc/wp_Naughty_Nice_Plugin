@@ -10,9 +10,9 @@ Primary Branch: main
 
 if (!defined('ABSPATH')) exit;
 
-// -------------------------------------------------------------------------
-// 1. GITHUB AUTO-UPDATE LOGIC
-// -------------------------------------------------------------------------
+// 1. Initialize Global Update Variable
+global $myUpdateChecker;
+
 $puc_file = plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php';
 
 if (file_exists($puc_file)) {
@@ -28,9 +28,7 @@ if (file_exists($puc_file)) {
     }
 }
 
-// -------------------------------------------------------------------------
-// 2. LOAD COMPONENTS
-// -------------------------------------------------------------------------
+// 2. Load Components
 require_once plugin_dir_path(__FILE__) . 'admin-page.php';
 require_once plugin_dir_path(__FILE__) . 'shortcode.php';
 
@@ -53,14 +51,14 @@ function nnl_install() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 
-    add_option('nnl_verify_method', 'none');
-    add_option('nnl_passcode', 'SANTA2025');
-    add_option('nnl_geo_radius', '5');
-    add_option('nnl_bad_words', 'ass,asshole,bastard,bitch,blowjob,cock,cunt,dick,faggot,fuck,fuk,nigger,pussy,retard,shit,slut,twat,whore,f4ck,a$$,sh1t,p00p');
+    if (!get_option('nnl_verify_method')) add_option('nnl_verify_method', 'none');
+    if (!get_option('nnl_passcode'))      add_option('nnl_passcode', 'SANTA2025');
+    if (!get_option('nnl_geo_radius'))    add_option('nnl_geo_radius', '5');
+    if (!get_option('nnl_bad_words'))     add_option('nnl_bad_words', 'ass,asshole,bastard,bitch,blowjob,cock,cunt,dick,faggot,fuck,fuk,nigger,pussy,retard,shit,slut,twat,whore,f4ck,a$$,sh1t,p00p');
 }
 
 /**
- * Register REST API Route
+ * REST API for FPP
  */
 add_action('rest_api_init', function () {
     register_rest_route('santa/v1', '/list', array(
@@ -70,44 +68,32 @@ add_action('rest_api_init', function () {
     ));
 });
 
-/**
- * API Callback Function
- */
 function nnl_get_api_data() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'naughty_nice';
 
-    $nice_names = $wpdb->get_col($wpdb->prepare(
-        "SELECT child_name FROM $table_name WHERE list_type = %s ORDER BY id DESC LIMIT 5",
-        'Nice'
-    ));
-
-    $naughty_names = $wpdb->get_col($wpdb->prepare(
-        "SELECT child_name FROM $table_name WHERE list_type = %s ORDER BY id DESC LIMIT 5",
-        'Naughty'
-    ));
+    $nice_names = $wpdb->get_col($wpdb->prepare("SELECT child_name FROM $table_name WHERE list_type = %s ORDER BY id DESC LIMIT 5", 'Nice'));
+    $naughty_names = $wpdb->get_col($wpdb->prepare("SELECT child_name FROM $table_name WHERE list_type = %s ORDER BY id DESC LIMIT 5", 'Naughty'));
 
     $data = array(
         'nice'         => $nice_names,
         'naughty'      => $naughty_names,
         'timestamp'    => current_time('mysql'),
-        'summary_text' => 'NICE LIST: ' . (empty($nice_names) ? 'Empty' : implode(', ', $nice_names)) . ' | NAUGHTY LIST: ' . (empty($naughty_names) ? 'Empty' : implode(', ', $naughty_names))
+        'summary_text' => 'NICE: ' . (empty($nice_names) ? 'None' : implode(', ', $nice_names)) . ' | NAUGHTY: ' . (empty($naughty_names) ? 'None' : implode(', ', $naughty_names))
     );
 
     return new WP_REST_Response($data, 200);
 }
 
 /**
- * Shortcode helper function (Distance Calc)
+ * Shortcode helper
  */
 if (!function_exists('nnl_calc_dist')) {
     function nnl_calc_dist($lat1, $lon1, $lat2, $lon2) {
-        $r = 3959; // Miles
+        $r = 3959; 
         $dLat = deg2rad($lat2 - $lat1); 
         $dLon = deg2rad($lon2 - $lon1);
-        // Using pow() instead of ** for better compatibility across PHP versions
         $a = pow(sin($dLat / 2), 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * pow(sin($dLon / 2), 2);
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        return $r * $c;
+        return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }
