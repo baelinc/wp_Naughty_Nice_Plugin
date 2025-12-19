@@ -1,20 +1,43 @@
 <?php
 /*
 Plugin Name: Naughty and Nice List
-Description: A festive list manager with Geofence, Passcode, Smart Profanity Filter, and FPP REST API.
+Description: A festive list manager with Geofence, Passcode, Smart Profanity Filter, and FPP REST API. Includes GitHub Auto-Updates.
 Version: 1.0
 Author: Johnathan Evans
+GitHub Plugin URI: https://github.com/baelinc/wp_Naughty_Nice_Plugin
+Primary Branch: main
 */
 
 if (!defined('ABSPATH')) exit;
 
-// Load the other plugin components
+// -------------------------------------------------------------------------
+// 1. GITHUB AUTO-UPDATE LOGIC
+// -------------------------------------------------------------------------
+// This looks for the folder you uploaded to GitHub
+$puc_file = plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php';
+
+if (file_exists($puc_file)) {
+    require_once $puc_file;
+    use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+    $myUpdateChecker = PucFactory::buildUpdateChecker(
+        'https://github.com/baelinc/wp_Naughty_Nice_Plugin/', 
+        __FILE__, 
+        'wp_Naughty_Nice_Plugin' 
+    );
+
+    // Ensure it checks the main branch
+    $myUpdateChecker->setBranch('main');
+}
+
+// -------------------------------------------------------------------------
+// 2. LOAD COMPONENTS
+// -------------------------------------------------------------------------
 require_once plugin_dir_path(__FILE__) . 'admin-page.php';
 require_once plugin_dir_path(__FILE__) . 'shortcode.php';
 
 /**
  * Database Installation
- * Runs once when the plugin is activated.
  */
 register_activation_hook(__FILE__, 'nnl_install');
 function nnl_install() {
@@ -32,7 +55,7 @@ function nnl_install() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 
-    // Set default settings if they don't exist
+    // Set default settings
     add_option('nnl_verify_method', 'none');
     add_option('nnl_passcode', 'SANTA2025');
     add_option('nnl_geo_radius', '5');
@@ -41,42 +64,36 @@ function nnl_install() {
 
 /**
  * Register REST API Route for Falcon Pi Player (FPP)
- * Endpoint: yourdomain.com/wp-json/santa/v1/list
  */
 add_action('rest_api_init', function () {
     register_rest_route('santa/v1', '/list', array(
         'methods' => 'GET',
         'callback' => 'nnl_get_api_data',
-        'permission_callback' => '__return_true', // Publicly accessible for FPP scripts
+        'permission_callback' => '__return_true', 
     ));
 });
 
 /**
  * API Callback Function
- * Returns the 5 newest names from each list in JSON format.
  */
 function nnl_get_api_data() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'naughty_nice';
 
-    // Pull 5 newest Nice names
     $nice_names = $wpdb->get_col($wpdb->prepare(
         "SELECT child_name FROM $table_name WHERE list_type = %s ORDER BY id DESC LIMIT 5",
         'Nice'
     ));
 
-    // Pull 5 newest Naughty names
     $naughty_names = $wpdb->get_col($wpdb->prepare(
         "SELECT child_name FROM $table_name WHERE list_type = %s ORDER BY id DESC LIMIT 5",
         'Naughty'
     ));
 
-    // Prepare response
     $data = [
         'nice' => $nice_names,
         'naughty' => $naughty_names,
         'timestamp' => current_time('mysql'),
-        // 'summary_text' is helpful for scrolling matrix signs
         'summary_text' => 'NICE LIST: ' . (empty($nice_names) ? 'Empty' : implode(', ', $nice_names)) . ' | NAUGHTY LIST: ' . (empty($naughty_names) ? 'Empty' : implode(', ', $naughty_names))
     ];
 
@@ -84,8 +101,7 @@ function nnl_get_api_data() {
 }
 
 /**
- * Shortcode helper function (used for distance calculation)
- * Included here in case shortcode.php is called after API
+ * Shortcode helper function
  */
 if (!function_exists('nnl_calc_dist')) {
     function nnl_calc_dist($lat1, $lon1, $lat2, $lon2) {
