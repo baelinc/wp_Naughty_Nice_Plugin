@@ -1,37 +1,87 @@
 <?php
-namespace YahnisElsts\PluginUpdateChecker\v5p6;
 
-use stdClass;
+namespace YahnisElsts\PluginUpdateChecker\v5p6\Theme;
+
+use YahnisElsts\PluginUpdateChecker\v5p6\Update as BaseUpdate;
 
 if ( !class_exists(Update::class, false) ):
 
-	/**
-	 * A simple container class for holding information about an available update.
-	 *
-	 * @author Janis Elsts
-	 * @access public
-	 */
-	abstract class Update extends Metadata {
-		public $slug;
-		public $version;
-		public $download_url;
-		public $translations = array();
+	class Update extends BaseUpdate {
+		public $details_url = '';
+
+		protected static $extraFields = array('details_url');
 
 		/**
-		 * @return string[]
+		 * Transform the metadata into the format used by WordPress core.
+		 * Note the inconsistency: WP stores plugin updates as objects and theme updates as arrays.
+		 *
+		 * @return array
 		 */
-		protected function getFieldNames() {
-			return array('slug', 'version', 'download_url', 'translations');
-		}
-
 		public function toWpFormat() {
-			$update = new stdClass();
+			$update = array(
+				'theme' => $this->slug,
+				'new_version' => $this->version,
+				'url' => $this->details_url,
+			);
 
-			$update->slug = $this->slug;
-			$update->new_version = $this->version;
-			$update->package = $this->download_url;
+			if ( !empty($this->download_url) ) {
+				$update['package'] = $this->download_url;
+			}
 
 			return $update;
+		}
+
+		/**
+		 * Create a new instance of Theme_Update from its JSON-encoded representation.
+		 *
+		 * @param string $json Valid JSON string representing a theme information object.
+		 * @return self New instance of ThemeUpdate, or NULL on error.
+		 */
+		public static function fromJson($json) {
+			$instance = new self();
+			if ( !parent::createFromJson($json, $instance) ) {
+				return null;
+			}
+			return $instance;
+		}
+
+		/**
+		 * Create a new instance by copying the necessary fields from another object.
+		 *
+		 * @param \StdClass|self $object The source object.
+		 * @return self The new copy.
+		 */
+		public static function fromObject($object) {
+			$update = new self();
+			$update->copyFields($object, $update);
+			return $update;
+		}
+
+		/**
+		 * Basic validation.
+		 *
+		 * @param \StdClass $apiResponse
+		 * @return bool|\WP_Error
+		 */
+		protected function validateMetadata($apiResponse) {
+			$required = array('version', 'details_url');
+			foreach($required as $key) {
+				if ( !isset($apiResponse->$key) || empty($apiResponse->$key) ) {
+					return new \WP_Error(
+						'tuc-invalid-metadata',
+						sprintf('The theme metadata is missing the required "%s" key.', $key)
+					);
+				}
+			}
+			return true;
+		}
+
+		protected function getFieldNames() {
+			return array_merge(parent::getFieldNames(), self::$extraFields);
+		}
+
+		protected function getPrefixedFilter($tag) {
+			return parent::getPrefixedFilter($tag) . '_theme';
 		}
 	}
 
