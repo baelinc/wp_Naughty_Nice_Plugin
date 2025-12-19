@@ -13,21 +13,19 @@ if (!defined('ABSPATH')) exit;
 // -------------------------------------------------------------------------
 // 1. GITHUB AUTO-UPDATE LOGIC
 // -------------------------------------------------------------------------
-// This looks for the folder you uploaded to GitHub
 $puc_file = plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php';
 
 if (file_exists($puc_file)) {
     require_once $puc_file;
-    use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
-
-    $myUpdateChecker = PucFactory::buildUpdateChecker(
-        'https://github.com/baelinc/wp_Naughty_Nice_Plugin/', 
-        __FILE__, 
-        'wp_Naughty_Nice_Plugin' 
-    );
-
-    // Ensure it checks the main branch
-    $myUpdateChecker->setBranch('main');
+    
+    if (class_exists('\YahnisElsts\PluginUpdateChecker\v5\PucFactory')) {
+        $myUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+            'https://github.com/baelinc/wp_Naughty_Nice_Plugin/', 
+            __FILE__, 
+            'wp_Naughty_Nice_Plugin' 
+        );
+        $myUpdateChecker->setBranch('main');
+    }
 }
 
 // -------------------------------------------------------------------------
@@ -55,7 +53,6 @@ function nnl_install() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 
-    // Set default settings
     add_option('nnl_verify_method', 'none');
     add_option('nnl_passcode', 'SANTA2025');
     add_option('nnl_geo_radius', '5');
@@ -63,7 +60,7 @@ function nnl_install() {
 }
 
 /**
- * Register REST API Route for Falcon Pi Player (FPP)
+ * Register REST API Route
  */
 add_action('rest_api_init', function () {
     register_rest_route('santa/v1', '/list', array(
@@ -90,25 +87,27 @@ function nnl_get_api_data() {
         'Naughty'
     ));
 
-    $data = [
-        'nice' => $nice_names,
-        'naughty' => $naughty_names,
-        'timestamp' => current_time('mysql'),
+    $data = array(
+        'nice'         => $nice_names,
+        'naughty'      => $naughty_names,
+        'timestamp'    => current_time('mysql'),
         'summary_text' => 'NICE LIST: ' . (empty($nice_names) ? 'Empty' : implode(', ', $nice_names)) . ' | NAUGHTY LIST: ' . (empty($naughty_names) ? 'Empty' : implode(', ', $naughty_names))
-    ];
+    );
 
     return new WP_REST_Response($data, 200);
 }
 
 /**
- * Shortcode helper function
+ * Shortcode helper function (Distance Calc)
  */
 if (!function_exists('nnl_calc_dist')) {
     function nnl_calc_dist($lat1, $lon1, $lat2, $lon2) {
         $r = 3959; // Miles
-        $dLat = deg2rad($lat2-$lat1); 
-        $dLon = deg2rad($lon2-$lon1);
-        $a = sin($dLat/2)**2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon/2)**2;
-        return $r * 2 * atan2(sqrt($a), sqrt(1-$a));
+        $dLat = deg2rad($lat2 - $lat1); 
+        $dLon = deg2rad($lon2 - $lon1);
+        // Using pow() instead of ** for better compatibility across PHP versions
+        $a = pow(sin($dLat / 2), 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * pow(sin($dLon / 2), 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $r * $c;
     }
 }
