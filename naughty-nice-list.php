@@ -2,7 +2,7 @@
 /*
 Plugin Name: Naughty and Nice List
 Description: A festive list manager with Geofence, Passcode, Smart Profanity Filter, and FPP REST API. Includes GitHub Auto-Updates.
-Version: 1.1
+Version: 1.0
 Author: Johnathan Evans
 GitHub Plugin URI: https://github.com/baelinc/wp_Naughty_Nice_Plugin
 Primary Branch: main
@@ -10,23 +10,23 @@ Primary Branch: main
 
 if (!defined('ABSPATH')) exit;
 
-// 1. Initialize the global variable for the update checker
+// 1. Initialize the global variable
 global $myUpdateChecker;
 
-// Define path to the library
 $puc_file = plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php';
 
 if (file_exists($puc_file)) {
     require_once $puc_file;
     
-    // Build the checker and assign it to the global variable
+    /**
+     * Pointing to the RAW JSON file bypasses the "Release" tag issue.
+     * The time() part at the end forces GitHub to give us the freshest version.
+     */
     $myUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-        'https://github.com/baelinc/wp_Naughty_Nice_Plugin/', 
+        'https://raw.githubusercontent.com/baelinc/wp_Naughty_Nice_Plugin/main/info.json?nocache=' . time(), 
         __FILE__, 
         'wp_Naughty_Nice_Plugin' 
     );
-
-    $myUpdateChecker->setBranch('main');
 }
 
 // 2. Load the other plugin components
@@ -52,11 +52,10 @@ function nnl_install() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 
-    // Set default settings
-    add_option('nnl_verify_method', 'none');
-    add_option('nnl_passcode', 'SANTA2025');
-    add_option('nnl_geo_radius', '5');
-    add_option('nnl_bad_words', 'ass,asshole,bastard,bitch,blowjob,cock,cunt,dick,faggot,fuck,fuk,nigger,pussy,retard,shit,slut,twat,whore,f4ck,a$$,sh1t,p00p');
+    if (!get_option('nnl_verify_method')) add_option('nnl_verify_method', 'none');
+    if (!get_option('nnl_passcode'))      add_option('nnl_passcode', 'SANTA2025');
+    if (!get_option('nnl_geo_radius'))    add_option('nnl_geo_radius', '5');
+    if (!get_option('nnl_bad_words'))     add_option('nnl_bad_words', 'ass,asshole,bastard,bitch,blowjob,cock,cunt,dick,faggot,fuck,fuk,nigger,pussy,retard,shit,slut,twat,whore,f4ck,a$$,sh1t,p00p');
 }
 
 /**
