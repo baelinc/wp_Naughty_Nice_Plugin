@@ -9,7 +9,13 @@ function nnl_handle_manual_update() {
     if (isset($_POST['force_puc_check'])) {
         $checker = isset($GLOBALS['myUpdateChecker']) ? $GLOBALS['myUpdateChecker'] : null;
         if ($checker) {
-            $checker->requestUpdate();
+            // 1. Force clear the internal PUC cache so it doesn't show "None" from memory
+            // PUC stores version data in a site transient based on the slug.
+            delete_site_transient('puc_external_updates_wp_Naughty_Nice_Plugin');
+            
+            // 2. Trigger the fresh request to GitHub
+            $checker->requestUpdate(); 
+            
             wp_redirect(admin_url('admin.php?page=naughty-nice-list&check=complete'));
             exit;
         }
@@ -17,7 +23,7 @@ function nnl_handle_manual_update() {
 }
 
 /**
- * Register Admin Menu
+ * Register Admin Menu with Santa Icon
  */
 add_action('admin_menu', 'nnl_create_menu');
 function nnl_create_menu() {
@@ -27,19 +33,20 @@ function nnl_create_menu() {
         'manage_options', 
         'naughty-nice-list', 
         'nnl_admin_html', 
-        'none', // We set this to 'none' to use custom CSS for the icon
+        'none', // 'none' allows us to inject the emoji via CSS below
         25
     );
 
-    // This tiny bit of CSS injects the Santa emoji into that menu spot
+    // Injects the Santa Emoji into the WordPress Sidebar
     add_action('admin_head', function() {
         echo '<style>
             #toplevel_page_naughty-nice-list .wp-menu-image:before {
-                content: "🎅";
+                content: "🎅" !important;
                 font-size: 18px !important;
-                display: flex;
+                display: flex !important;
                 align-items: center;
                 justify-content: center;
+                padding-top: 2px;
             }
         </style>';
     });
@@ -48,7 +55,6 @@ function nnl_create_menu() {
 function nnl_admin_html() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'naughty_nice';
-    // Access the update checker from the global scope
     $updateChecker = isset($GLOBALS['myUpdateChecker']) ? $GLOBALS['myUpdateChecker'] : null;
 
     // 1. Save Settings Logic
@@ -117,17 +123,14 @@ function nnl_admin_html() {
                 <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccd0d4; border-top: 5px solid #165b33; margin-bottom: 20px;">
                     <h2 style="margin-top:0;">🔄 GitHub Sync</h2>
                     <?php if ($updateChecker): 
-                        $state = $updateChecker->getUpdateState();
                         $update = $updateChecker->getUpdate();
-                        $lastCheck = $state ? $state->getLastCheck() : null;
                     ?>
                         <p><b>Your Version:</b> <?php echo esc_html($updateChecker->getInstalledVersion()); ?></p>
-                        <p><b>Last Sync:</b> <?php echo $lastCheck ? date('M j, g:i a', $lastCheck) : 'Never'; ?></p>
 
                         <div style="background: #f4f4f4; padding: 10px; font-size: 11px; margin-bottom: 15px; border: 1px inset #ccc; color: #666;">
                             <strong>Diagnostic Info:</strong><br>
                             Remote Version Found: <?php echo ($update) ? esc_html($update->version) : 'None'; ?><br>
-                            Plugin Slug: <?php echo esc_html($updateChecker->slug); ?><br>
+                            Slug: <?php echo esc_html($updateChecker->slug); ?>
                         </div>
 
                         <?php if ($update): ?>
