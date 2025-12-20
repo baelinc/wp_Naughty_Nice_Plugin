@@ -27,9 +27,22 @@ function nnl_create_menu() {
         'manage_options', 
         'naughty-nice-list', 
         'nnl_admin_html', 
-        'dashicons-santa', 
+        'none', // We set this to 'none' to use custom CSS for the icon
         25
     );
+
+    // This tiny bit of CSS injects the Santa emoji into that menu spot
+    add_action('admin_head', function() {
+        echo '<style>
+            #toplevel_page_naughty-nice-list .wp-menu-image:before {
+                content: "🎅";
+                font-size: 18px !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        </style>';
+    });
 }
 
 function nnl_admin_html() {
