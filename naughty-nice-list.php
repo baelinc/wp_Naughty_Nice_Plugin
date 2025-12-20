@@ -2,7 +2,7 @@
 /*
 Plugin Name: Naughty and Nice List
 Description: A festive list manager with Geofence, Passcode, Smart Profanity Filter, and FPP REST API. Includes GitHub Auto-Updates.
-Version: 1.0
+Version: 1.1.0
 Author: Johnathan Evans
 GitHub Plugin URI: https://github.com/baelinc/wp_Naughty_Nice_Plugin
 Primary Branch: main
