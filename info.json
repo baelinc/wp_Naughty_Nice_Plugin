@@ -1,7 +1,7 @@
 {
     "name": "Naughty and Nice List",
     "slug": "wp_Naughty_Nice_Plugin",
-    "version": "1.0",
+    "version": "1.1.0",
     "download_url": "https://github.com/baelinc/wp_Naughty_Nice_Plugin/archive/refs/heads/main.zip",
     "sections": {
         "description": "Santa's Naughty and Nice List with Geofencing and FPP API."
