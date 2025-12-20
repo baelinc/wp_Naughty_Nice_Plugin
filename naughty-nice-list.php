@@ -12,21 +12,21 @@ if (!defined('ABSPATH')) exit;
 
 // 1. Initialize the global variable
 global $myUpdateChecker;
-
 $puc_file = plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php';
 
 if (file_exists($puc_file)) {
     require_once $puc_file;
     
-    /**
-     * Pointing to the RAW JSON file bypasses the "Release" tag issue.
-     * The time() part at the end forces GitHub to give us the freshest version.
-     */
-    $myUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-        'https://raw.githubusercontent.com/baelinc/wp_Naughty_Nice_Plugin/main/info.json?nocache=' . time(), 
-        __FILE__, 
-        'wp_Naughty_Nice_Plugin' 
-    );
+    // Use the Namespace correctly and verify the class exists to prevent crashes
+    if (class_exists('\YahnisElsts\PluginUpdateChecker\v5\PucFactory')) {
+        $myUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+            'https://raw.githubusercontent.com/baelinc/wp_Naughty_Nice_Plugin/main/info.json', 
+            __FILE__, 
+            'wp_Naughty_Nice_Plugin' 
+        );
+        
+        // Removed enableReleaseAssets() as it is not compatible with direct JSON links
+    }
 }
 
 // 2. Load the other plugin components
